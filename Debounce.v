@@ -5,7 +5,7 @@
 //               Filters out mechanical bounce by requiring the input state to
 //               remain stable for c_DEBOUNCE_LIMIT clock cycles before updating
 //               the output state.
-
+//
 //               Note: Default limit (250,000) provides an optimal 10ms delay
 //               when driven by a 25MHz clock (e.g. Nandland Go Board)
 // ============================================================================
@@ -24,17 +24,25 @@ parameter c_DEBOUNCE_LIMIT = 250000;
 reg[17:0] r_Count = 0;
 reg r_State = 1'b0;
 
+// Two-stage Synchronizer
+reg r_Sync_1 = 1;
+reg r_Sync_0 = 1;
+
 always @(posedge i_Clk)
 begin
+    // Synchronize the asynchronous input
+    r_Sync_0 <= i_Switch;
+    r_Sync_1 <= r_Sync_0;
+
     // The physical switch differs from our r_State, indicates potential press
     // Increments counter as long as c_DEBOUNCE_LIMIT hasn't been reached
-    if (i_Switch != r_State && r_Count < c_DEBOUNCE_LIMIT)
+    if (r_Sync_1 != r_State && r_Count < c_DEBOUNCE_LIMIT)
     r_Count <= r_Count + 1;
 
     // The counter has reached c_DEBOUNCE_LIMIT, apply valid state change and reset count
     else if (r_Count == c_DEBOUNCE_LIMIT)
     begin
-    r_State <= i_Switch;
+    r_State <= r_Sync_1;
     r_Count <= 0;
     end
 
